@@ -1,0 +1,4 @@
+# Additional requirements for Stagehand Extension Mode
+# Install with: pip install -r requirements-extension.txt
+
+websockets>=12.0

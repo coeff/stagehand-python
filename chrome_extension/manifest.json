@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Stagehand Extension Bridge",
+  "version": "0.1.0",
+  "description": "Bridge between Stagehand Python and Chrome for AI-powered browser automation",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "cookies",
+    "downloads",
+    "webNavigation",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

@@ -21,6 +21,7 @@ from .api import _create_session, _execute, _get_replay_metrics
 from .browser import (
     cleanup_browser_resources,
     connect_browserbase_browser,
+    connect_extension_browser,
     connect_local_browser,
 )
 from .config import StagehandConfig, default_config
@@ -215,8 +216,8 @@ class Stagehand:
         self._inference_start_time = 0  # To track inference time
 
         # Validate env
-        if self.env not in ["BROWSERBASE", "LOCAL"]:
-            raise ValueError("env must be either 'BROWSERBASE' or 'LOCAL'")
+        if self.env not in ["BROWSERBASE", "LOCAL", "EXTENSION"]:
+            raise ValueError("env must be either 'BROWSERBASE', 'LOCAL', or 'EXTENSION'")
 
         # Initialize the centralized logger with the specified verbosity
         self.on_log = self.config.logger or default_log_handler
@@ -267,7 +268,7 @@ class Stagehand:
         self.context: Optional[StagehandContext] = None
         self.use_api = self.config.use_api
         self.experimental = self.config.experimental
-        if self.env == "LOCAL":
+        if self.env == "LOCAL" or self.env == "EXTENSION":
             self.use_api = False
         if (
             self.browserbase_session_create_params
@@ -540,26 +541,47 @@ class Stagehand:
             except Exception:
                 await self.close()
                 raise
+
+        elif self.env == "EXTENSION":
+            # Connect to Chrome extension (no Playwright needed!)
+            self._playwright = None
+            try:
+                (
+                    self._browser,
+                    self._context,
+                    self.context,
+                    self._page,
+                ) = await connect_extension_browser(
+                    self,
+                    self.logger,
+                )
+                # No playwright page in extension mode
+                self._playwright_page = None
+
+            except Exception:
+                await self.close()
+                raise
         else:
             # Should not happen due to __init__ validation
             raise RuntimeError(f"Invalid env value: {self.env}")
 
-        # Set up download behavior via CDP
-        try:
-            # Create CDP session for the page
-            cdp_session = await self._context.new_cdp_session(self._playwright_page)
-            # Enable download behavior
-            await cdp_session.send(
-                "Browser.setDownloadBehavior",
-                {
-                    "behavior": "allow",
-                    "downloadPath": get_download_path(self),
-                    "eventsEnabled": True,
-                },
-            )
-            self.logger.debug("Set up CDP download behavior")
-        except Exception as e:
-            self.logger.warning(f"Failed to set up CDP download behavior: {str(e)}")
+        # Set up download behavior via CDP (skip for EXTENSION mode)
+        if self.env != "EXTENSION":
+            try:
+                # Create CDP session for the page
+                cdp_session = await self._context.new_cdp_session(self._playwright_page)
+                # Enable download behavior
+                await cdp_session.send(
+                    "Browser.setDownloadBehavior",
+                    {
+                        "behavior": "allow",
+                        "downloadPath": get_download_path(self),
+                        "eventsEnabled": True,
+                    },
+                )
+                self.logger.debug("Set up CDP download behavior")
+            except Exception as e:
+                self.logger.warning(f"Failed to set up CDP download behavior: {str(e)}")
 
         self._initialized = True
 

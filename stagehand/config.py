@@ -36,7 +36,7 @@ class StagehandConfig(BaseModel):
         experimental (bool): Enable experimental features.
     """
 
-    env: Literal["BROWSERBASE", "LOCAL"] = "BROWSERBASE"
+    env: Literal["BROWSERBASE", "LOCAL", "EXTENSION"] = "BROWSERBASE"
     api_key: Optional[str] = Field(
         None, alias="apiKey", description="Browserbase API key for authentication"
     )
